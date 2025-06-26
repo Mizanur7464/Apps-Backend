@@ -9,8 +9,9 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Initialize SQLite DB
-let db = new sqlite3.Database('./vouchers.sqlite', (err) => {
+// Use /tmp/vouchers.sqlite on Heroku, ./vouchers.sqlite locally
+const dbPath = process.env.PORT ? '/tmp/vouchers.sqlite' : './vouchers.sqlite';
+let db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Failed to connect to SQLite database:', err);
   } else {
