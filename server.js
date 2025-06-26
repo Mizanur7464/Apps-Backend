@@ -35,7 +35,7 @@ let pool;
 async function initDb() {
   await ensureDatabaseExists();
   pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:153401@localhost:5432/vouchers',
+    connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
   });
   // Create tables if not exist
