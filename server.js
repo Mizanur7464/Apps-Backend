@@ -1,10 +1,7 @@
 import express from 'express';
-import pkg from 'pg';
-const { Pool, Client } = pkg;
+import sqlite3 from 'sqlite3';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -12,89 +9,85 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Ensure 'vouchers' database exists before Pool init
-async function ensureDatabaseExists() {
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL
-      ? process.env.DATABASE_URL.replace(/\/vouchers$/, '/postgres')
-      : 'postgresql://postgres:153401@localhost:5432/postgres',
-  });
-  await client.connect();
-  const dbName = 'vouchers';
-  const res = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
-  if (res.rowCount === 0) {
-    await client.query(`CREATE DATABASE ${dbName}`);
-    console.log(`Database '${dbName}' created.`);
+// Initialize SQLite DB
+let db = new sqlite3.Database('./vouchers.sqlite', (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite database:', err);
+  } else {
+    console.log('Connected to SQLite database.');
   }
-  await client.end();
-}
+});
 
-let pool;
+// Create tables (drop if exist to wipe old data)
+db.serialize(() => {
+  db.run('DROP TABLE IF EXISTS referrals');
+  db.run('DROP TABLE IF EXISTS vouchers');
+  db.run('DROP TABLE IF EXISTS voucher_campaigns');
+  db.run('DROP TABLE IF EXISTS spin_wheel_config');
+  db.run('DROP TABLE IF EXISTS referral_rewards');
 
-// Initialize PostgreSQL DB
-async function initDb() {
-  await ensureDatabaseExists();
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
-  });
-  // Create tables if not exist
-  await pool.query(`CREATE TABLE IF NOT EXISTS referrals (
-    id SERIAL PRIMARY KEY,
+  db.run(`CREATE TABLE referrals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     referrer TEXT NOT NULL,
     referred TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS vouchers (
-    id SERIAL PRIMARY KEY,
+  db.run(`CREATE TABLE vouchers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
     value TEXT,
     prize TEXT,
     status TEXT,
     claimedAt TEXT
   )`);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS voucher_campaigns (
-      id SERIAL PRIMARY KEY,
-      content TEXT NOT NULL,
-      quantity INTEGER NOT NULL,
-      status TEXT DEFAULT 'active',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS spin_wheel_config (
-      id SERIAL PRIMARY KEY,
-      prize_label TEXT NOT NULL,
-      win_chance REAL NOT NULL,
-      campaign_id INTEGER,
-      status TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (campaign_id) REFERENCES voucher_campaigns(id)
-    )
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS referral_rewards (
-      id SERIAL PRIMARY KEY,
-      content TEXT NOT NULL,
-      status TEXT DEFAULT 'active',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
+  db.run(`CREATE TABLE voucher_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    status TEXT DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE TABLE spin_wheel_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prize_label TEXT NOT NULL,
+    win_chance REAL NOT NULL,
+    campaign_id INTEGER,
+    status TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (campaign_id) REFERENCES voucher_campaigns(id)
+  )`);
+  db.run(`CREATE TABLE referral_rewards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+});
 
 // Helper functions for query (to match sqlite's db.get/db.all/db.run)
-async function dbGet(query, params) {
-  const res = await pool.query(query, params);
-  return res.rows[0];
+function dbGet(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(query, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
 }
-async function dbAll(query, params) {
-  const res = await pool.query(query, params);
-  return res.rows;
+function dbAll(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(query, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
 }
-async function dbRun(query, params) {
-  const res = await pool.query(query, params);
-  return res;
+function dbRun(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(query, params, function(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
 }
 
 // Add a new voucher (for grabbing)
@@ -314,10 +307,6 @@ app.get('/api/vouchers/count', async (req, res) => {
   }
 });
 
-initDb().then(async () => {
-  app.listen(PORT, () => {
-    console.log(`Backend server running on http://localhost:${PORT}`);
-  });
-}).catch(err => {
-  console.error('Failed to start server:', err);
+app.listen(PORT, () => {
+  console.log(`Backend server running on http://localhost:${PORT}`);
 });
