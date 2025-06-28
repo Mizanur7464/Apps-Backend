@@ -201,7 +201,12 @@ app.get('/api/admin/spin-wheel', async (req, res) => {
   try {
     // Only return active prizes
     const rows = db.prepare("SELECT * FROM spin_wheel_config WHERE status = 'active' ORDER BY created_at DESC").all();
-    res.json(rows);
+    // Get the latest created_at as config version
+    let configVersion = null;
+    if (rows.length > 0) {
+      configVersion = rows[0].created_at;
+    }
+    res.json({ configVersion, prizes: rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -210,8 +215,9 @@ app.post('/api/admin/spin-wheel', async (req, res) => {
   const { prizes } = req.body; // prizes: [{prize_label, win_chance, campaign_id, status}]
   try {
     db.prepare('DELETE FROM spin_wheel_config').run();
+    const now = new Date().toISOString();
     for (const prize of prizes) {
-      db.prepare('INSERT INTO spin_wheel_config (prize_label, win_chance, campaign_id, status) VALUES (?, ?, ?, ?)').run(prize.prize_label, prize.win_chance, prize.campaign_id || null, prize.status || 'active');
+      db.prepare('INSERT INTO spin_wheel_config (prize_label, win_chance, campaign_id, status, created_at) VALUES (?, ?, ?, ?, ?)').run(prize.prize_label, prize.win_chance, prize.campaign_id || null, prize.status || 'active', now);
     }
     res.json({ success: true });
   } catch (err) {
