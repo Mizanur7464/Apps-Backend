@@ -13,7 +13,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 app.use(cors());
 app.use(bodyParser.json());
 
-let db, vouchers, referrals, voucher_campaigns, spin_wheel_config, referral_rewards;
+let db, vouchers, referrals, voucher_campaigns, spin_wheel_config, referral_rewards, spin_wheel_active;
 
 async function main() {
   const client = new MongoClient(MONGODB_URI, { useUnifiedTopology: true });
@@ -24,6 +24,7 @@ async function main() {
   voucher_campaigns = db.collection('voucher_campaigns');
   spin_wheel_config = db.collection('spin_wheel_config');
   referral_rewards = db.collection('referral_rewards');
+  spin_wheel_active = db.collection('spin_wheel_active');
   console.log('Connected to MongoDB');
 
   // Add a new voucher (for grabbing)
@@ -225,6 +226,39 @@ async function main() {
     try {
       const result = await vouchers.deleteOne({ _id: new ObjectId(id) });
       res.json({ success: result.deletedCount > 0 });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Spin Wheel: Set active config (Start)
+  app.post('/api/admin/spin-wheel/:id/start', async (req, res) => {
+    const { id } = req.params;
+    try {
+      await spin_wheel_active.deleteMany({}); // Only one active at a time
+      await spin_wheel_active.insertOne({ activeSpinConfigId: new ObjectId(id) });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+  // --- Spin Wheel: Unset active config (Stop)
+  app.post('/api/admin/spin-wheel/stop', async (req, res) => {
+    try {
+      await spin_wheel_active.deleteMany({});
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Spin Wheel: Get active config for users
+  app.get('/api/spin-wheel/active', async (req, res) => {
+    try {
+      const active = await spin_wheel_active.findOne({});
+      if (!active) return res.json({ prizes: [] });
+      const prizes = await spin_wheel_config.find({ _id: active.activeSpinConfigId }).toArray();
+      res.json({ activeSpinConfigId: active.activeSpinConfigId, prizes });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
