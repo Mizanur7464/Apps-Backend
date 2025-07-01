@@ -219,6 +219,17 @@ async function main() {
     }
   });
 
+  // Delete a voucher by id
+  app.delete('/api/admin/vouchers/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const result = await vouchers.deleteOne({ _id: new ObjectId(id) });
+      res.json({ success: result.deletedCount > 0 });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.listen(PORT, () => {
     console.log(`Backend server running on port ${PORT}`);
   });
