@@ -12,7 +12,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 // CORS config: allow only frontend origins
 const allowedOrigins = [
-  'https://apps-frontend-1ovv-rfm...vercel.app', // এখানে আপনার Vercel ফ্রন্টএন্ডের আসল URL দিন
+  'https://apps-frontend-pi.vercel.app', // আপনার Vercel ফ্রন্টএন্ডের আসল URL
   'http://localhost:3000'
 ];
 
