@@ -14,6 +14,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const allowedOrigins = [
   'https://apps-frontend-pi.vercel.app',
   'https://apps-frontend-6pys1v3kd-mizanurs-projects-24e9ba9d.vercel.app',
+  'https://apps-frontend-git-main-mizanurs-projects-24e9ba9d.vercel.app',
   'http://localhost:3000'
 ];
 
