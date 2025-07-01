@@ -271,10 +271,18 @@ async function main() {
   // --- Spin Wheel: Get active config for users
   app.get('/api/spin-wheel/active', async (req, res) => {
     try {
-      const active = await spin_wheel_active.findOne({});
-      if (!active) return res.json({ prizes: [] });
-      const prizes = await spin_wheel_config.find({ _id: active.activeSpinConfigId }).toArray();
-      res.json({ activeSpinConfigId: active.activeSpinConfigId, prizes });
+      const prizes = await spin_wheel_config.find({ status: 'active' }).toArray();
+      if (!prizes || prizes.length === 0) {
+        // Return default rewards if no active config
+        return res.json({
+          activeSpinConfigId: null,
+          prizes: [
+            { prize_label: "Better luck next time", win_chance: 100 },
+            { prize_label: "Try again", win_chance: 0 }
+          ]
+        });
+      }
+      res.json({ activeSpinConfigId: prizes[0]._id, prizes });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -284,7 +292,7 @@ async function main() {
   app.post('/api/admin/spin-wheel/start', async (req, res) => {
     try {
       await spin_wheel_config.updateMany({}, { $set: { status: 'active' } });
-      res.json({ success: true });
+      res.json({ success: true, message: "Spin is now started. Admin rewards are active." });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -293,7 +301,7 @@ async function main() {
   app.post('/api/admin/spin-wheel/stop', async (req, res) => {
     try {
       await spin_wheel_config.updateMany({}, { $set: { status: 'inactive' } });
-      res.json({ success: true });
+      res.json({ success: true, message: "Spin is now stopped. Default rewards will be shown." });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
