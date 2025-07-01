@@ -262,11 +262,12 @@ async function main() {
       res.status(500).json({ error: err.message });
     }
   });
-  // --- Spin Wheel: Unset active config (Stop)
+
+  // --- Spin Wheel: Stop all configs (campaign)
   app.post('/api/admin/spin-wheel/stop', async (req, res) => {
     try {
-      await spin_wheel_active.deleteMany({});
-      res.json({ success: true });
+      await spin_wheel_config.updateMany({}, { $set: { status: 'inactive' } });
+      res.json({ success: true, message: "Spin is now stopped. Default rewards will be shown." });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -297,15 +298,6 @@ async function main() {
     try {
       await spin_wheel_config.updateMany({}, { $set: { status: 'active' } });
       res.json({ success: true, message: "Spin is now started. Admin rewards are active." });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-  // --- Spin Wheel: Stop all configs (campaign)
-  app.post('/api/admin/spin-wheel/stop', async (req, res) => {
-    try {
-      await spin_wheel_config.updateMany({}, { $set: { status: 'inactive' } });
-      res.json({ success: true, message: "Spin is now stopped. Default rewards will be shown." });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
