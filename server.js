@@ -280,6 +280,25 @@ async function main() {
     }
   });
 
+  // --- Spin Wheel: Start all configs (campaign)
+  app.post('/api/admin/spin-wheel/start', async (req, res) => {
+    try {
+      await spin_wheel_config.updateMany({}, { $set: { status: 'active' } });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+  // --- Spin Wheel: Stop all configs (campaign)
+  app.post('/api/admin/spin-wheel/stop', async (req, res) => {
+    try {
+      await spin_wheel_config.updateMany({}, { $set: { status: 'inactive' } });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.listen(PORT, () => {
     console.log(`Backend server running on port ${PORT}`);
   });
