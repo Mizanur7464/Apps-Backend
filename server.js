@@ -165,7 +165,7 @@ async function main() {
   // --- Admin: Spin Wheel Config ---
   app.get('/api/admin/spin-wheel', async (req, res) => {
     try {
-      const rows = await spin_wheel_config.find({ status: 'active' }).sort({ created_at: -1 }).toArray();
+      const rows = await spin_wheel_config.find({}).sort({ created_at: -1 }).toArray();
       let configVersion = null;
       if (rows.length > 0) configVersion = rows[0].created_at;
       res.json({ configVersion, prizes: rows });
