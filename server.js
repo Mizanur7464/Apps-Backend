@@ -165,6 +165,7 @@ async function main() {
   // --- Admin: Spin Wheel Config ---
   app.get('/api/admin/spin-wheel', async (req, res) => {
     try {
+      // Return ALL configs, not just active
       const rows = await spin_wheel_config.find({}).sort({ created_at: -1 }).toArray();
       let configVersion = null;
       if (rows.length > 0) configVersion = rows[0].created_at;
